@@ -17,8 +17,14 @@ class Code:
             self.curLine += 1
 
     def runLine(self, line):
-        if "=" in line:
+        if "=" in line and line[line.index("=")+1] != "=":
             self.defineVar(line)
+        elif "+=" in line:
+            self.changeVar(line, "+")
+        elif "-=" in line:
+            self.changeVar(line, "-")
+        elif "*=" in line:
+            self.changeVar(line, "*")
         else:
             self.evaluate(line)
 
