@@ -9,11 +9,12 @@ class Code:
         self.const = {}
         self.predef = ["+", "-", "*", "/", "%", "$", "^", "and", "or", "if", "loop", "while", "xor"]
         self.orderofops = [["^"], ["*", "/", "$", "%"], ["+", "-"], ["and"], ["or", "xor"]]
+        self.goBacks = {}
 
     def run(self):
         self.curLine = 0
         while self.curLine != len(self.code):
-            self.runLine(self.curLine)
+            self.runLine(self.code[self.curLine])
             self.curLine += 1
 
     def runLine(self, line):
@@ -25,10 +26,15 @@ class Code:
             self.changeVar(line, "-")
         elif "*=" in line:
             self.changeVar(line, "*")
+        elif "}" in line:
+            if self.curLine in self.goBacks.keys():
+                a = self.goBacks[self.curLine]
+                del self.goBacks[self.curLine]
+                self.curLine = a
         else:
             self.evaluate(line)
 
-    def bracketChase(self, pos, t1, t2):
+    def bracketChase2(self, pos, t1, t2):
         count = 1
         orig = pos
         while True:
@@ -47,19 +53,20 @@ class Code:
                 break
 
     def bracketChase(self, code, t1, t2):
-        count = 1
-        orig = 1
+        count = 0
+        orig = -1
         while True:
+            orig += 1
             if code[orig] == t2:
                 count -= 1
             elif code[orig] == t1:
                 count += 1
             if count == 0:
                 return orig
-            orig += 1
-            if code[orig]+1 == len(code):
+            if orig+1 == len(code):
                 self.errorMessage("Missing End Bracket", orig)
                 break
+
 
     def defineVar(self, line):
         a, b = line.split("=")
@@ -74,67 +81,128 @@ class Code:
 
     def readIf(self, lineNum):
         s = self.code[lineNum].find("(")
+        e = self.bracketChase(self.code[lineNum], "(", ")")
+        if "{" in self.code[lineNum] and s <= self.code[lineNum].find("{") <= e:
+            self.errorMessage("Curly brace in evaluation")
+        b = self.evaluate(self.code[lineNum][s+1:e])
+        if b == "False":
+            self.curLine = self.bracketChase2((lineNum, lineNum.index("{")), "{", "}")[0]
+
+    def readWhile(self, lineNum):
+        s = self.code[lineNum].find("(")
+        e = self.bracketChase(self.code[lineNum], "(", ")")
+        if "{" in self.code[lineNum] and s <= self.code[lineNum].find("{") <= e:
+            self.errorMessage("Curly brace in evaluation")
+        b = self.evaluate(self.code[lineNum][s+1:e])
+        if b == "False":
+            self.curLine = self.bracketChase2((lineNum, lineNum.index("{")), "{", "}")[0]
+        else:
+            self.goBacks[self.curLine] = self.bracketChase2((lineNum, lineNum.index("{")), "{", "}")[0]
+
+    def readFor(self, lineNum):
+        pass
 
 
-    def evaluate(self, code):
-        if "[" in code:
-            self.bracketChase(code, "[", "]")
-        if "[" in code or "]" in code and (code[0] != "[" or code[-1] != "]"):
-            self.errorMessage("List literal in evaluation", code)
-        if "[" in code and "]" in code and code[0] == "[" and code[-1] == "]":
-            return code
-        if "(" in code:
-            s = code.find("(")
-            e = self.bracketChase(code, "(", ")")
-            code = code[:s] + self.evaluate(code[s:e]) + code[e:]
+    #Recursively evals a statement
+    def evaluate(self, codel):
+        #Removing spaces
+        instr = False
+        for i in range(len(codel)-1, -1, -1):
+            if codel[i] == '"':
+                instr = not instr
+            if not instr and codel[i] == " ":
+                codel = codel[:i] + codel[i+1:]
+            elif instr and codel[i] == " ":
+                codel = codel[:i] + "磨" + codel[i+1:]
+
+        #Lists for vals
+        if "[" in codel:
+            self.bracketChase(codel, "[", "]")
+        if "[" in codel or "]" in codel and (codel[0] != "[" or codel[-1] != "]"):
+            self.errorMessage("List literal in evaluation", codel)
+        if "[" in codel and "]" in codel and codel[0] == "[" and codel[-1] == "]":
+            return codel
+
+        #Remove brackets except for function calls
+        s = 0
+        while True:
+            if "(" not in codel[s:]:
+                break
+            s = codel[s:].index("(")
+            if s == 0 or codel[s-1] not in "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm":
+                e = self.bracketChase(codel[s:], "(", ")")
+                a = codel[:s]
+                if a == None:
+                    a = ""
+                b = codel[e+s+1:]
+                if b == None:
+                    b = ""
+                codel = a + self.evaluate(codel[s+1:e+s]) + b
+            elif codel[s-1] in "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm":
+                s += 1
+
+
+
+
         for ops in self.orderofops:
             for o in ops:
-                if o in self.code:
-                    self.code = self.code[:code.find(o)] + " " + o + " " + self.code[code.find(o):]
-        codeList = self.code.split()
+                i = 0
+                while i < len(codel):
+                    if codel[i] == o:
+                        codel = codel[:i] + " " + o + " " + codel[i+1:]
+                        i += 1
+                    i += 1
+
+
+        codeList = codel.split()
+        print(codeList)
+
         while len(codeList) != 1:
             for ops in self.orderofops:
                 f = 999999999
                 for o in ops:
-                    if o in code:
+                    if o in codel:
                         f = min(f, codeList.index(o))
                 if f != 999999999:
-                    if f == 0 or f == len(codeList-1):
-                        self.errorMessage("Operation is not connecting two things", (code, f))
+                    if f == 0 or f == len(codeList)-1:
+                        self.errorMessage("Operation is not connecting two things", (codel, f))
                     codeList[f] = self.evaluate2(codeList[f-1], codeList[f], codeList[f+1])
                     del codeList[f+1]
                     del codeList[f-1]
+        
         return codeList[0]
 
+
+    #Takes two things and a binary operation and evals it
     def evaluate2(self, x, o, y):
         if self.getType(x) == self.getType(y) == "num":
-            if x % 1 == 0:
+            if float(x) % 1 == 0:
                 x = int(x)
             else:
                 x = float(x)
-            if y % 1 == 0:
+            if float(y) % 1 == 0:
                 y = int(y)
             else:
                 y = float(y)
             if o == "+":
-                return x+y
+                return str(x+y)
             elif o == "-":
-                return x-y
+                return str(x-y)
             elif o == "*":
-                return x*y
+                return str(x*y)
             elif o == "/":
-                return x/y
+                return str(x/y)
             elif o == "^":
-                return x**y
+                return str(x**y)
             elif o == "$":
-                return x//y
+                return str(x//y)
             elif o == "%":
-                return x%y
+                return str(x%y)
         if self.getType(x) == self.getType(y) == "str":
             if o == "+":
                 return '"'+x[1:len(x)-1]+y[1:len(y)-1]+'"'
         if self.getType(x) == "num" and self.getType(y) == "str":
-            if x % 1 == 0:
+            if float(x) % 1 == 0:
                 x = int(x)
             else:
                 x = float(x)
@@ -142,9 +210,9 @@ class Code:
             if o == "*":
                 if x%1 != 0:
                     self.errorMessage("Can't multiply a string by a non-integer", (x, y))
-                return x*y
+                return '"' + x*y + '"'
         if self.getType(y) == "num" and self.getType(x) == "str":
-            if y % 1 == 0:
+            if float(y) % 1 == 0:
                 y = int(y)
             else:
                 y = float(y)
@@ -152,14 +220,14 @@ class Code:
             if o == "*":
                 if y%1 != 0:
                     self.errorMessage("Can't multiply a string by a non-integer", (y, x))
-                return x*y
+                return '"' + x*y + '"'
         if self.getType(x) == "bool" and self.getType(y) == "bool":
             if o == "and":
-                return bool(x) and bool(y)
+                return str(bool(x) and bool(y))
             elif o == "or":
-                return bool(x) or bool(y)
+                return str(bool(x) or bool(y))
             elif o == "xor":
-                return bool(x) ^ bool(y)
+                return str(bool(x) ^ bool(y))
 
 
 
@@ -170,7 +238,7 @@ class Code:
             return "num"
         except:
             pass
-        if code[1] == code[-1] == '"':
+        if code[0] == code[-1] == '"':
             return "str"
         if code == "True" or code == "False":
             return "bool"
@@ -180,7 +248,7 @@ class Code:
 
 
     def errorMessage(self, error, info):
-        return 0
+        print(error, info)
 
     def output(self, msg):
         print(msg)
@@ -188,5 +256,17 @@ class Code:
     def l_input(self):
         pass
 
+    def func(self, term):
+        f = term[:term.index("(")]
+        if f == "say":
+            self.output(term[(term.index("(")+1):(term.index(")")+1)])
 
 
+co = [
+   "x = 2  ",
+    'y =(2*(3 + 4)*2)*  ("hi" + "he y")',
+    "  say (y)"
+]
+c = Code(co)
+
+c.run()
