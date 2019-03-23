@@ -10,8 +10,17 @@ class Code:
         self.predef = ["+", "-", "*", "/", "%", "$", "^", "and", "or", "if", "loop", "while", "xor"]
         self.orderofops = [["^"], ["*", "/", "$", "%"], ["+", "-"], ["and"], ["or", "xor"]]
 
-    def runLine(self):
-        pass
+    def run(self):
+        self.curLine = 0
+        while self.curLine != len(self.code):
+            self.runLine(self.curLine)
+            self.curLine += 1
+
+    def runLine(self, line):
+        if "=" in line:
+            self.defineVar(line)
+        else:
+            self.evaluate(line)
 
     def bracketChase(self, pos, t1, t2):
         count = 1
@@ -172,3 +181,6 @@ class Code:
 
     def l_input(self):
         pass
+
+
+
