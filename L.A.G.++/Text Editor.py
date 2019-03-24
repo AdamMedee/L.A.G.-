@@ -298,8 +298,18 @@ def select_all(event):
 
 
 def runfile():
-    #Adam this is your territory
-    pass
+
+    master = Tk()
+    master.geometry("1920x1080")
+    master.title("Running")
+
+    console = Text(master,height=90,width=90,font=("Arial",10))
+
+    autoscroll = Scrollbar(master,command=console.yview)
+    autoscroll.config(command=console.yview)
+
+    #Reserving the rest for Adam for actual compilation of file
+
 
 
 
