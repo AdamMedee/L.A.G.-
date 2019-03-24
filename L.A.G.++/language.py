@@ -15,11 +15,14 @@ class Code:
         self.sent = False
         self.m = ""
 
-    def run(self):
+    def run(self, console, eb):
         self.curLine = 0
         while self.curLine != len(self.code):
             self.runLine(self.code[self.curLine])
             self.curLine += 1
+            if self.sent:
+                console.insert(eb, self.m + "\n", 'welcome')
+                self.sent = False
 
 
     def runLine(self, line):
@@ -125,7 +128,6 @@ class Code:
             self.curLine = self.bracketChase2([lineNum, self.code[lineNum].index("{")], "{", "}")[0]
         else:
             self.goBacks[self.bracketChase2([lineNum, self.code[lineNum].index("{")], "{", "}")[0]] = self.curLine
-
 
     def commaSep(self, codel):
         tmpLis = []
@@ -321,6 +323,7 @@ class Code:
                             del codeList[f-1]
                     else:
                         break
+
 
 
 
