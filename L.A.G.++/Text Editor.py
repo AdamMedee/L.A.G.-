@@ -191,7 +191,7 @@ def select_all(event):
 def runfile():
     global lines,text
     master = Tk()
-    master.geometry("1920x1080")
+    master.geometry("1200x700")
     master.title("Running")
 
     console = Text(master,height=90,width=90,font=("Arial",10))
@@ -209,7 +209,7 @@ def runfile():
 
 root = Tk()
 
-root.geometry("1920x1080")
+root.geometry("1200x700")
 
 root.title("Lag++ Editor")
 
