@@ -1,5 +1,6 @@
 from pygame import *
 from math import *
+from random import *
 
 class Code:
     def __init__(self, code):
@@ -8,9 +9,11 @@ class Code:
         self.vars = {}
         self.const = {}
         self.predef = ["+", "-", "*", "/", "%", "$", "^", "and", "or", "if", "loop", "while", "xor"]
-        self.orderofops = [["^"], ["*", "/", "$", "%"], ["+", "-"], ["<", ">", "~"], ["and"], ["or", "xor"]]
+        self.orderofops = [["^"], ["*", "/", "$", "%"], ["+", "-"], ["<", ">", "~"], ["&"], ["|"]]
         self.goBacks = {}
         self.graphics = False
+        self.sent = False
+        self.m = ""
 
     def run(self):
         self.curLine = 0
@@ -21,6 +24,8 @@ class Code:
 
     def runLine(self, line):
         tmp = line.replace(" ", "")
+        tmp = tmp.strip()
+        line = line.strip()
         if "=" in line and line[line.index("=")-1] not in "+-*/%$^":
             self.defineVar(line)
         elif "+=" in line:
@@ -49,11 +54,16 @@ class Code:
         count = 1
         orig = pos
         while True:
+            if pos[0] == len(self.code):
+                break
             if (pos[1]+1) == len(self.code[pos[0]]):
                 pos[1] = 0
                 pos[0] += 1
             else:
                 pos[1] += 1
+            if self.code[pos[0]] == "":
+                pos[0] += 1
+                continue
             if self.code[pos[0]][pos[1]] == t2:
                 count -= 1
             elif self.code[pos[0]][pos[1]] == t1:
@@ -82,17 +92,18 @@ class Code:
 
     def defineVar(self, line):
         a, b = line.split("=")
-        a = a.replace(" ", "")
+        a = "".join(a.split())
         self.vars[a] = self.evaluate(b)
 
 
     def changeVar(self, line, op):
         a, b = line.split(op+"=")
-        a = a.replace(" ", "")
+        a = "".join(a.split())
         if a in self.vars.keys():
             self.vars[a] = self.evaluate(a+op+self.evaluate(b))
         else:
             self.errorMessage("Variable Not Defined", a)
+
 
 
     def readIf(self, lineNum):
@@ -150,7 +161,6 @@ class Code:
 
     #Recursively evals a statement
     def evaluate(self, codel):
-
         #Removing spaces
         instr = False
         for i in range(len(codel)-1, -1, -1):
@@ -160,6 +170,7 @@ class Code:
                 codel = codel[:i] + codel[i+1:]
             elif instr and codel[i] == " ":
                 codel = codel[:i] + "磨" + codel[i+1:]
+        codel = "".join(codel.split())
 
         #Lists for vals
 
@@ -219,7 +230,9 @@ class Code:
                     i += 1
 
 
+
         codeList = codel.split()
+
 
         for i in range(len(codeList)):
             cod = codeList[i]
@@ -261,6 +274,22 @@ class Code:
                 elif cod[:s] == "DrawRect":
                     col, x, y, w, h, t = self.commaSep(cod[s+1:s+e])
                     self.drawRect([x, y, w, h], col, t)
+                elif cod[:s] == "DrawEllipse":
+                    col, x, y, w, h, t = self.commaSep(cod[s+1:s+e])
+                    self.drawEllipse([x, y, w, h], col, t)
+                elif cod[:s] == "DrawCircle":
+                    col, x, y, r, t = self.commaSep(cod[s+1:s+e])
+                    self.drawCirc((x, y), r, col, t)
+                elif cod[:s] == "Fill":
+                    col = cod[s+1:s+e]
+                    self.fillBg(col)
+                elif cod[:s] == "MouseLeft":
+                    return str(self.leftPress)
+                elif cod[:s] == "MouseRight":
+                    return str(self.rightPress)
+                elif cod[:s] == "Random":
+                    a, b = self.commaSep(cod[s+1:s+e])
+                    return randint(int(a), int(b))
 
             elif cod in self.vars.keys():
                 codeList[i] = str(self.vars[cod])
@@ -268,17 +297,32 @@ class Code:
 
 
         while len(codeList) != 1:
+
             for ops in self.orderofops:
-                f = 999999999
-                for o in ops:
-                    if o in codeList:
-                        f = min(f, codeList.index(o))
-                if f != 999999999:
-                    if f == 0 or f == len(codeList)-1:
-                        self.errorMessage("Operation is not connecting two things", (codel, f))
-                    codeList[f] = self.evaluate2(codeList[f-1], codeList[f], codeList[f+1])
-                    del codeList[f+1]
-                    del codeList[f-1]
+
+                while True:
+                    f = 999999999
+                    for o in ops:
+                        if o in codeList:
+                            f = min(f, codeList.index(o))
+                    if f != 999999999:
+                        if f == 0 or f == len(codeList)-1:
+                            if f == 0 and o == "-":
+                                codeList[f] = codeList[f] + codeList[f+1]
+                                del codeList[f+1]
+                            else:
+                                self.errorMessage("Operation is not connecting two things", (codel, f))
+                        elif f != len(codeList)-1 and codeList[f+1] == "-":
+                            codeList[f+2] = codeList[f+1] + codeList[f+2]
+                            del codeList[f+1]
+                        else:
+                            codeList[f] = self.evaluate2(codeList[f-1], codeList[f], codeList[f+1])
+                            del codeList[f+1]
+                            del codeList[f-1]
+                    else:
+                        break
+
+
 
         return codeList[0]
 
@@ -290,41 +334,55 @@ class Code:
         self.graphics = True
 
     def checkEvents(self):
+        self.leftPress = False
+        self.rightPress = False
         for action in event.get():
             if action.type == QUIT:
                 quit()
+            elif action.type == MOUSEBUTTONDOWN:
+                if action.button == 1:
+                    self.leftPress = True
+                elif action.button == 3:
+                    self.rightPress = True
         display.flip()
 
     def fillBg(self, col):
         self.screen.fill(self.h2r(col))
 
     def drawLine(self, p1, p2, col, thickness):
-        draw.line(self.screen, self.h2r(col), [int(c) for c in p1], [int(c) for c in p2], int(thickness))
+        draw.line(self.screen, self.h2r(col), [int(float(c)) for c in p1], [int(float(c)) for c in p2], int(float(thickness)))
 
     def drawRect(self, r, col, thickness):
-        draw.rect(self.screen, self.h2r(col), [int(c) for c in r], int(thickness))
+        draw.rect(self.screen, self.h2r(col), [int(float(c)) for c in r], int(float(thickness)))
 
     def drawEllipse(self, r, col, thickness):
-        draw.ellipse(self.screen, self.h2r(col), [int(c) for c in r], int(thickness))
+        draw.ellipse(self.screen, self.h2r(col), [int(float(c)) for c in r], int(float(thickness)))
 
     def drawCirc(self, p1, rad, col, thickness):
-        draw.circle(self.screen, self.h2r(col), [int(c) for c in p1], int(rad),int(thickness))
+        draw.circle(self.screen, self.h2r(col), [int(float(c)) for c in p1], int(float(rad)),int(float(thickness)))
 
     def h2r(self, value):
         value = value[1:len(value)-1]
         vals = "0123456789abcdef"
         lv = len(value)
-        return ((vals.index(value[0])*16+vals.index(value[1])), (vals.index(value[2])*16+vals.index(value[3])), (vals.index(value[4])*16+vals.index(value[5])),)
+        return ((vals.index(value[0])*16+vals.index(value[1])), (vals.index(value[2])*16+vals.index(value[3])), (vals.index(value[4])*16+vals.index(value[5])))
+
+    def mouseInput(self):
+        return mouse.get_pressed()
 
     #Takes two things and a binary operation and evals it
     def evaluate2(self, x, o, y):
         if self.getType(x) == self.getType(y) == "num":
+            if "e" in x:
+                x = x[:len(x)-1]
+            if "e" in y:
+                y = y[:len(y)-1]
             if float(x) % 1 == 0:
-                x = int(x)
+                x = int(float(x))
             else:
                 x = float(x)
             if float(y) % 1 == 0:
-                y = int(y)
+                y = int(float(y))
             else:
                 y = float(y)
             if o == "+":
@@ -342,11 +400,20 @@ class Code:
             elif o == "%":
                 return str(x%y)
             elif o == "~":
-                return str(x==y)
+                if x == y:
+                    return "True"
+                else:
+                    return "False"
             elif o == ">":
-                return str(x>y)
+                if x > y:
+                    return "True"
+                else:
+                    return "False"
             elif o == "<":
-                return str(x<y)
+                if x < y:
+                    return "True"
+                else:
+                    return "False"
         if self.getType(x) == self.getType(y) == "str":
             if o == "+":
                 return '"'+x[1:len(x)-1]+y[1:len(y)-1]+'"'
@@ -371,12 +438,17 @@ class Code:
                     self.errorMessage("Can't multiply a string by a non-integer", (y, x))
                 return '"' + x*y + '"'
         if self.getType(x) == "bool" and self.getType(y) == "bool":
-            if o == "and":
-                return str(bool(x) and bool(y))
-            elif o == "or":
-                return str(bool(x) or bool(y))
-            elif o == "xor":
-                return str(bool(x) ^ bool(y))
+            if o == "&":
+                if (x[0]=="T") and (y[0]=="T"):
+                    return "True"
+                else:
+                    return "False"
+            elif o == "|":
+                if (x[0]=="T") or (y[0]=="T"):
+                    return "True"
+                else:
+                    return "False"
+
 
 
 
@@ -384,7 +456,7 @@ class Code:
 
     def getType(self, code):
         try:
-            code = int(code)
+            code = float(code[:10])
             return "num"
         except:
             pass
@@ -394,6 +466,8 @@ class Code:
             return "bool"
         if code[0] == "[" and code[-1] == "]":
             return "list"
+        if code == "-":
+            return "minus"
         self.errorMessage("Type Unknown", code)
 
 
@@ -401,7 +475,8 @@ class Code:
         print(error, info)
 
     def output(self, msg):
-        print(msg.replace("磨", " "))
+        self.sent = True
+        self.m = msg.replace("磨", " ")
 
     def l_input(self):
         pass
@@ -412,20 +487,5 @@ class Code:
             self.output(term[(term.index("(")+1):(term.index(")")+1)])
 
 
-co = [
-   "nums = [1, 2, 3]",
-    "say(get(nums, 1))",
-    "set(nums, 1, 5)",
-    "say(size(nums))",
-    "add(nums, 17)",
-    "say(nums)",
-    "del(nums, 3)",
-    "say(nums)",
-    "makeScreen(800, 400)",
-    "while(True){",
-    "Event()",
-    'DrawRect("ff0000", 100, 200, 400, 450, 2)',
-    "}"
-]
 
 
