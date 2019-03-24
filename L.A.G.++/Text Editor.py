@@ -187,6 +187,8 @@ def select_all(event):
 
 
 
+def runFile(event):
+    runfile()
 
 def runfile():
     global lines,text
@@ -196,9 +198,15 @@ def runfile():
 
     console = Text(master,height=90,width=90,font=("Arial",10))
 
+    console.insert(END,"Gary Sun\n")
+
     autoscroll = Scrollbar(master,command=console.yview)
     autoscroll.config(command=console.yview)
 
+    console.pack()
+    autoscroll.pack()
+
+    console.insert(END,"Henning Jiang")
     #Reserving the rest for Adam for actual compilation of file
     lines=text.get("1.0",END).splitlines()
     code = Code(lines)
@@ -294,16 +302,6 @@ menu.add_cascade(label="Personalize" ,menu=persomenu)
 persomenu.add_command(label="Background...", command=background)
 
 
-
-helpmenu = Menu(menu)
-
-menu.add_cascade(label="?", menu=helpmenu)
-
-helpmenu.add_command(label="Documentation", command=showdoc)
-# helpmenu.add_command(label = "Loops", command = showloop)
-
-# helpmenu.add_command(label="Website", command = web)
-
 runmenu=Menu(menu)
 
 menu.add_cascade(label="Run",menu=runmenu)
@@ -311,13 +309,16 @@ menu.add_cascade(label="Run",menu=runmenu)
 runmenu.add_command(label="Run Module",command=runfile)
 
 
+
+helpmenu = Menu(menu)
+
+menu.add_cascade(label="?", menu=helpmenu)
+
+helpmenu.add_command(label="Documentation", command=showdoc)
+
+
 text = Text(root, height=90, width=90, font = ("Arial", 10))
 
-# inbox = Text(root,height=45,width=85,font=("Arial",10))
-# # outbox = Text(root,height=45,width=85,font=("Arial",10))
-# #
-# inbox.pack(anchor=NE)
-# # outbox.pack(anchor=SE)
 
 scroll = Scrollbar(root, command=text.yview)
 
@@ -332,6 +333,7 @@ scroll.pack(side=RIGHT, fill=Y)
 
 text.bind("<Control-Key-a>" ,select_all)
 text.bind("<Control-Key-A>" ,select_all)
+text.bind("<F5>",runFile)
 
 
 root.resizable(0 ,0)
