@@ -297,6 +297,12 @@ def select_all(event):
 
 
 
+def runfile():
+    #Adam this is your territory
+    pass
+
+
+
 root = Tk()
 
 root.geometry("1920x1080")
@@ -394,8 +400,20 @@ helpmenu.add_command(label="Documentation", command=showdoc)
 
 # helpmenu.add_command(label="Website", command = web)
 
+runmenu=Menu(menu)
+
+menu.add_cascade(label="Run",menu=runmenu)
+
+runmenu.add_command(label="Run Module",command=runfile)
+
+
 text = Text(root, height=90, width=90, font = ("Arial", 10))
 
+# inbox = Text(root,height=45,width=85,font=("Arial",10))
+# # outbox = Text(root,height=45,width=85,font=("Arial",10))
+# #
+# inbox.pack(anchor=NE)
+# # outbox.pack(anchor=SE)
 
 scroll = Scrollbar(root, command=text.yview)
 
@@ -403,7 +421,7 @@ scroll.config(command=text.yview)
 
 text.config(yscrollcommand=scroll.set)
 
-text.pack(anchor="nw")
+text.pack(anchor=NW,fill=X)
 scroll.pack(side=RIGHT, fill=Y)
 
 
