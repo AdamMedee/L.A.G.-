@@ -8,7 +8,7 @@ class Code:
         self.vars = {}
         self.const = {}
         self.predef = ["+", "-", "*", "/", "%", "$", "^", "and", "or", "if", "loop", "while", "xor"]
-        self.orderofops = [["^"], ["*", "/", "$", "%"], ["+", "-"], ["and"], ["or", "xor"]]
+        self.orderofops = [["^"], ["*", "/", "$", "%"], ["+", "-"], ["<", ">", "~"], ["and"], ["or", "xor"]]
         self.goBacks = {}
 
     def run(self):
@@ -18,7 +18,8 @@ class Code:
             self.curLine += 1
 
     def runLine(self, line):
-        if "=" in line and line[line.index("=")+1] != "=":
+        tmp = line.replace(" ", "")
+        if "=" in line and line[line.index("=")-1] not in "+-*/%$^":
             self.defineVar(line)
         elif "+=" in line:
             self.changeVar(line, "+")
@@ -30,7 +31,11 @@ class Code:
             if self.curLine in self.goBacks.keys():
                 a = self.goBacks[self.curLine]
                 del self.goBacks[self.curLine]
-                self.curLine = a
+                self.curLine = a-1
+        elif len(tmp) >= 2 and tmp[0]+tmp[1] == "if":
+            self.readIf(self.curLine)
+        elif len(tmp) >= 5 and tmp[0:5] == "while":
+            self.readWhile(self.curLine)
         else:
             self.evaluate(line)
 
@@ -40,6 +45,7 @@ class Code:
         while True:
             if (pos[1]+1) == len(self.code[pos[0]]):
                 pos[1] = 0
+                pos[0] += 1
             else:
                 pos[1] += 1
             if self.code[pos[0]][pos[1]] == t2:
@@ -70,34 +76,40 @@ class Code:
 
     def defineVar(self, line):
         a, b = line.split("=")
+        a = a.replace(" ", "")
         self.vars[a] = self.evaluate(b)
+
 
     def changeVar(self, line, op):
         a, b = line.split(op+"=")
+        a = a.replace(" ", "")
         if a in self.vars.keys():
-            self.vars[a] = self.evaluate(b)
+            self.vars[a] = self.evaluate(a+op+self.evaluate(b))
         else:
             self.errorMessage("Variable Not Defined", a)
 
+
     def readIf(self, lineNum):
         s = self.code[lineNum].find("(")
-        e = self.bracketChase(self.code[lineNum], "(", ")")
+        e = self.bracketChase(self.code[lineNum][s:], "(", ")")
         if "{" in self.code[lineNum] and s <= self.code[lineNum].find("{") <= e:
             self.errorMessage("Curly brace in evaluation")
-        b = self.evaluate(self.code[lineNum][s+1:e])
+        b = self.evaluate(self.code[lineNum][s+1:e+s])
         if b == "False":
-            self.curLine = self.bracketChase2((lineNum, lineNum.index("{")), "{", "}")[0]
+            self.curLine = self.bracketChase2([lineNum, self.code[lineNum].index("{")], "{", "}")[0]
 
     def readWhile(self, lineNum):
         s = self.code[lineNum].find("(")
-        e = self.bracketChase(self.code[lineNum], "(", ")")
+        e = self.bracketChase(self.code[lineNum][s:], "(", ")")
         if "{" in self.code[lineNum] and s <= self.code[lineNum].find("{") <= e:
             self.errorMessage("Curly brace in evaluation")
-        b = self.evaluate(self.code[lineNum][s+1:e])
+        b = self.evaluate(self.code[lineNum][s+1:e+s])
         if b == "False":
-            self.curLine = self.bracketChase2((lineNum, lineNum.index("{")), "{", "}")[0]
+            self.curLine = self.bracketChase2([lineNum, self.code[lineNum].index("{")], "{", "}")[0]
         else:
-            self.goBacks[self.curLine] = self.bracketChase2((lineNum, lineNum.index("{")), "{", "}")[0]
+            self.goBacks[self.bracketChase2([lineNum, self.code[lineNum].index("{")], "{", "}")[0]] = self.curLine
+
+
 
     def readFor(self, lineNum):
         pass
@@ -141,21 +153,36 @@ class Code:
             elif codel[s-1] in "QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm":
                 s += 1
 
-
-
-
+        inBracks = 0
         for ops in self.orderofops:
             for o in ops:
                 i = 0
                 while i < len(codel):
-                    if codel[i] == o:
+                    if codel[i] == "(":
+                        inBracks+=1
+                    elif codel[i] == ")":
+                        inBracks-=1
+                    if codel[i] == o and inBracks == 0:
                         codel = codel[:i] + " " + o + " " + codel[i+1:]
                         i += 1
                     i += 1
 
 
         codeList = codel.split()
-        print(codeList)
+
+        for i in range(len(codeList)):
+            cod = codeList[i]
+            if "(" in cod:
+                s = cod.index("(")
+                e = self.bracketChase(cod[s:], "(", ")")
+                if cod[:s] == "say":
+                    self.output(self.evaluate(cod[s+1:s+e]))
+                    return "None"
+            elif cod in self.vars.keys():
+                codeList[i] = str(self.vars[cod])
+
+
+
 
         while len(codeList) != 1:
             for ops in self.orderofops:
@@ -169,7 +196,7 @@ class Code:
                     codeList[f] = self.evaluate2(codeList[f-1], codeList[f], codeList[f+1])
                     del codeList[f+1]
                     del codeList[f-1]
-        
+
         return codeList[0]
 
 
@@ -198,6 +225,12 @@ class Code:
                 return str(x//y)
             elif o == "%":
                 return str(x%y)
+            elif o == "~":
+                return str(x==y)
+            elif o == ">":
+                return str(x>y)
+            elif o == "<":
+                return str(x<y)
         if self.getType(x) == self.getType(y) == "str":
             if o == "+":
                 return '"'+x[1:len(x)-1]+y[1:len(y)-1]+'"'
@@ -228,6 +261,7 @@ class Code:
                 return str(bool(x) or bool(y))
             elif o == "xor":
                 return str(bool(x) ^ bool(y))
+
 
 
 
@@ -264,8 +298,15 @@ class Code:
 
 co = [
    "x = 2  ",
+    "z = 4",
     'y =(2*(3 + 4)*2)*  ("hi" + "he y")',
-    "  say (y)"
+    "  say (y)",
+    "while(z < 20){",
+    "z += 2",
+    "say(z+2)",
+    "}",
+    "say(z)",
+    ""
 ]
 c = Code(co)
 
