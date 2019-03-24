@@ -15,6 +15,11 @@ from tkinter.filedialog import askopenfilename, asksaveasfilename
 
 from language import *
 
+from queue import *
+
+
+InputQ = Queue()
+
 
 def line():
 
@@ -34,25 +39,25 @@ def date():
 
 def normal():
 
-    text.config(font = ("Arial", 10))
+    text.config(font = ("Courier", 10))
 
 
 
 def bold():
 
-    text.config(font = ("Arial", 10, "bold"))
+    text.config(font = ("Courier", 10, "bold"))
 
 
 
 def underline():
 
-    text.config(font = ("Arial", 10, "underline"))
+    text.config(font = ("Courier", 10, "underline"))
 
 
 
 def italic():
 
-    text.config(font = ("Arial" ,10 ,"italic"))
+    text.config(font = ("Courier" ,10 ,"italic"))
 
 
 
@@ -186,19 +191,26 @@ def select_all(event):
     return "break"
 
 
+def getcurrentline(event):
+    global currentInput
+    pos=console.index(INSERT).split(".")
+    line=console.get(pos[0]+".0",pos[0]+"."+pos[1])
+    print(line)
+    InputQ.put(line);
+
+
+
+
 
 def runFile(event):
     runfile()
 
 def runfile():
-    global lines,text
+    global lines,text,console, maxrow
     master = Tk()
     master.geometry("1200x700")
     master.title("Running")
-
-    console = Text(master,height=90,width=90,font=("Arial",10))
-
-    console.insert(END,"Gary Sun\n")
+    console = Text(master, height=90, width=90, font=("Courier", 10))
 
     autoscroll = Scrollbar(master,command=console.yview)
     autoscroll.config(command=console.yview)
@@ -206,11 +218,18 @@ def runfile():
     console.pack()
     autoscroll.pack()
 
-    console.insert(END,"Henning Jiang")
+    console.tag_config('welcome', foreground="blue")
+    console.insert(END, "Hello from the LAG++ development team!\n", 'welcome')
+
+    console.bind("<Return>",getcurrentline)
     #Reserving the rest for Adam for actual compilation of file
     lines=text.get("1.0",END).splitlines()
     code = Code(lines)
     code.run()
+
+    if code.sent:
+        console.insert(code.m+"\n",END, 'welcome')
+        code.sent = False
 
 
 
@@ -306,7 +325,7 @@ runmenu=Menu(menu)
 
 menu.add_cascade(label="Run",menu=runmenu)
 
-runmenu.add_command(label="Run Module",command=runfile)
+runmenu.add_command(label="Run Module...F5",command=runfile)
 
 
 
@@ -317,7 +336,7 @@ menu.add_cascade(label="?", menu=helpmenu)
 helpmenu.add_command(label="Documentation", command=showdoc)
 
 
-text = Text(root, height=90, width=90, font = ("Arial", 10))
+text = Text(root, height=90, width=90, font = ("Courier", 10))
 
 
 scroll = Scrollbar(root, command=text.yview)
