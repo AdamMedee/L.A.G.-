@@ -1,6 +1,7 @@
 from pygame import *
 from math import *
 from random import *
+from queue import *
 
 class Code:
     def __init__(self, code):
@@ -14,6 +15,7 @@ class Code:
         self.graphics = False
         self.sent = False
         self.m = ""
+
 
     def run(self, console, eb):
         self.curLine = 0
@@ -292,6 +294,8 @@ class Code:
                 elif cod[:s] == "Random":
                     a, b = self.commaSep(cod[s+1:s+e])
                     return randint(int(a), int(b))
+                elif cod[:s] == "Ask":
+                    return str(self.l_input(cod[s+1:s+e]))
 
             elif cod in self.vars.keys():
                 codeList[i] = str(self.vars[cod])
@@ -481,8 +485,15 @@ class Code:
         self.sent = True
         self.m = msg.replace("磨", " ")
 
-    def l_input(self):
-        pass
+    def l_input(self, typ):
+        a = Queue()
+        while True:
+            if not a.empty():
+                inp = a.get()
+                if typ == "num":
+                    return float(inp)
+                elif type == "str":
+                    return str(inp)
 
     def func(self, term):
         f = term[:term.index("(")]

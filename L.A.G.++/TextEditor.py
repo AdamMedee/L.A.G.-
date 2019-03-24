@@ -196,7 +196,7 @@ def getcurrentline(event):
     pos=console.index(INSERT).split(".")
     line=console.get(pos[0]+".0",pos[0]+"."+pos[1])
     print(line)
-    InputQ.put(line);
+    InputQ.put(line)
 
 
 
