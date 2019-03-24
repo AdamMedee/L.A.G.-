@@ -201,7 +201,6 @@ def runfile():
 
     #Reserving the rest for Adam for actual compilation of file
     lines=text.get("1.0",END).splitlines()
-
     code = Code(lines)
     code.run()
 

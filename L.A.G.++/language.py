@@ -18,6 +18,7 @@ class Code:
             self.runLine(self.code[self.curLine])
             self.curLine += 1
 
+
     def runLine(self, line):
         tmp = line.replace(" ", "")
         if "=" in line and line[line.index("=")-1] not in "+-*/%$^":
@@ -39,6 +40,8 @@ class Code:
             self.readWhile(self.curLine)
         elif len(tmp) >= 4 and tmp[0:4] == "loop":
             self.readLoop(self.curLine)
+        elif line == "":
+            pass
         else:
             self.evaluate(line)
 
